@@ -512,7 +512,7 @@ static void bridge_emit(const char *utf8)
 {
 	// лог до гейта: видно, что ушло бы в озвучку, даже при выключенном TTS
 	BLOG("flush win=%d |%s|", cur_winno, utf8);
-	if (!tts_enabled || !mid_on_adv_text)
+	if (!mid_on_adv_text)
 		return;
 	JNIEnv *env = bridge_env();
 	if (!env)
@@ -527,7 +527,7 @@ static void bridge_emit(const char *utf8)
 
 static void bridge_emit_page(void)
 {
-	if (!tts_enabled || !mid_on_adv_page)
+	if (!mid_on_adv_page)
 		return;
 	JNIEnv *env = bridge_env();
 	if (!env)
@@ -539,7 +539,7 @@ static void bridge_emit_page(void)
 
 static void bridge_emit_window(int winno, int page)
 {
-	if (!tts_enabled || !mid_on_window)
+	if (!mid_on_window)
 		return;
 	JNIEnv *env = bridge_env();
 	if (!env)
