@@ -50,13 +50,41 @@ static int vval_max;  // 最大チャンネル番号
 static struct volume_channel vval[MAXVOLCH];
 static bool mute_on_unfocus;
 static bool global_mute;
+static int duck_pct = 100;  // приглушение музыки на время TTS (100 = без приглушения)
+
+// Канал музыки: BGM по индексу-фолбэку либо по метке, содержащей "BGM".
+static bool chan_is_bgm(int i) {
+	if (i == BGM_VOLVAL_CH)
+		return true;
+	const char *l = vval[i].label;
+	if (!l)
+		return false;
+	for (const char *p = l; p[0] && p[1] && p[2]; p++) {
+		if ((p[0] == 'B' || p[0] == 'b') &&
+		    (p[1] == 'G' || p[1] == 'g') &&
+		    (p[2] == 'M' || p[2] == 'm'))
+			return true;
+	}
+	return false;
+}
 
 static void apply_volume(void) {
 	int vol[MAXVOLCH] = {0};
 	for (int i = 0; i < MAXVOLCH; i++) {
-		vol[i] = (global_mute || vval[i].mute) ? 0 : vval[i].vol;
+		int v = (global_mute || vval[i].mute) ? 0 : vval[i].vol;
+		if (duck_pct < 100 && chan_is_bgm(i))
+			v = v * duck_pct / 100;
+		vol[i] = v;
 	}
 	mus_vol_set_valance(vol, MAXVOLCH);
+}
+
+// Приглушение музыки на время речи TTS (percent — целевой уровень 0..100).
+void volume_duck(bool on, int percent) {
+	if (percent < 0) percent = 0;
+	if (percent > 100) percent = 100;
+	duck_pct = on ? percent : 100;
+	apply_volume();
 }
 
 void volume_set_mute_on_unfocus(bool enable) {

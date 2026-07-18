@@ -113,16 +113,18 @@ void msg_putMessage(const char *m) {
 		msg_nextPage(true);
 	}
 	
-	texthook_message(m);
-
 	/* 表示文字列を文字列変数にコピーする */
 	if (msg.mg_getString) {
 		copyMsgToStrVar(m);
 	}
-	
+
 	// fprintf(stdout, "x=%d, y = %d, msg=%s\n", msgcur.x,msgcur.y,msg);
 	if (!msg.mg_dspMsg) return;
-	
+
+	// Текст реально показывается — только теперь отдаём в text-hook (иначе TTS
+	// читал бы невидимый текст: имена пунктов меню, предметов и т.п.).
+	texthook_message(m);
+
 	SDL_Rect drawn;
 	msgcur.x += ags_drawString(msgcur.x, msgcur.y, m, msg.MsgFontColor, msg.MsgFontSize, &drawn);
 

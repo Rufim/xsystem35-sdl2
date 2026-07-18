@@ -34,6 +34,9 @@ void volume_dialog_open(void);
 // Enables muting audio while the window is unfocused (-mute_on_unfocus).
 void volume_set_mute_on_unfocus(bool enable);
 
+// Приглушение музыки на время речи TTS (percent — целевой уровень 0..100).
+void volume_duck(bool on, int percent);
+
 // Notifies the volume controller of window focus changes.
 void volume_on_window_focus(bool focused);
 

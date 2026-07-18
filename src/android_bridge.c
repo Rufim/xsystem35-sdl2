@@ -11,6 +11,7 @@
 #include "android_bridge.h"
 #include "variable.h"
 #include "nact.h"
+#include "volume.h"
 
 #define BRIDGE_PAGE_MAX 256   // совпадает с PAGE_MAX в variable.c
 
@@ -252,12 +253,13 @@ Java_io_github_rufim_alice_NativeBridge_nativeAdvance(JNIEnv *env, jobject self)
 	bridge_advance_message();
 }
 
-// Приглушение музыки на время речи. Для System 3.x пока no-op (TODO: SDL_mixer).
+// Приглушение музыки на время речи через систему громкости движка (volume.c).
 JNIEXPORT void JNICALL
 Java_io_github_rufim_alice_NativeBridge_nativeDuckMusic(
 		JNIEnv *env, jobject self, jboolean on, jint percent)
 {
-	(void)env; (void)self; (void)on; (void)percent;
+	(void)env; (void)self;
+	volume_duck(on, percent);
 }
 
 // Счётчик посимвольной отрисовки (модалко-детект авто-листания) — не реализован
