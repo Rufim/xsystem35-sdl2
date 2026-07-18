@@ -20,6 +20,38 @@ static bool tts_enabled = false;
 
 void bridge_set_tts_enabled(bool on) { tts_enabled = on; }
 
+// Белый список номеров окон сообщений для озвучки (пусто = читать все окна).
+// Позволяет читать только окно диалога, исключая боевой лог/статус/меню.
+#define READ_WIN_MAX 32
+static int read_windows[READ_WIN_MAX];
+static int read_windows_n = 0;
+
+void bridge_set_read_windows(const char *csv)
+{
+	read_windows_n = 0;
+	if (!csv)
+		return;
+	for (const char *p = csv; *p && read_windows_n < READ_WIN_MAX; ) {
+		while (*p == ' ' || *p == ',')
+			p++;
+		if (!*p)
+			break;
+		read_windows[read_windows_n++] = atoi(p);
+		while (*p && *p != ',')
+			p++;
+	}
+}
+
+bool bridge_window_allowed(int winno)
+{
+	if (read_windows_n == 0)
+		return true;   // пусто = читать все
+	for (int i = 0; i < read_windows_n; i++)
+		if (read_windows[i] == winno)
+			return true;
+	return false;
+}
+
 // Запрос открыть меню движка (громкость/пропуск/…). Ставится из UI-потока,
 // исполняется в потоке игры (get_event), т.к. menu_open рисует модалку.
 static volatile int menu_request = 0;
@@ -48,11 +80,30 @@ void bridge_advance_message(void)
 
 static void bridge_emit(const char *utf8);
 static void bridge_emit_page(void);
+static void bridge_emit_window(int winno, int page);
+
+/* Текст озвучивается сразу при отображении (msg_putMessage). Отбор «что
+ * читать» делает подавление по страницам сценария (texthook_set_suppression_list):
+ * поведенчески диалог/бой/меню в System 3.9-играх неразличимы (игра сама
+ * опрашивает ввод скриптом), но живут на разных страницах — их номера видны
+ * в оверлее «стр N · окно M» при включённом TTS. */
+static int cur_winno = -1;
+static int cur_page = -1;
+
+// Смена окна/страницы — обновить отладочный оверлей.
+void bridge_report_window(int winno, int page)
+{
+	if (winno == cur_winno && page == cur_page)
+		return;
+	cur_winno = winno;
+	cur_page = page;
+	bridge_emit_window(winno, page);
+}
 
 void bridge_adv_message(const char *utf8) { if (utf8 && *utf8) bridge_emit(utf8); }
 void bridge_adv_newline(void) { /* текст уже отдан в bridge_adv_message */ }
 void bridge_adv_page_break(void) { bridge_emit_page(); }
-void bridge_adv_keywait(void) { /* точка ожидания клавиши; резерв для авто-листания */ }
+void bridge_adv_keywait(void) { /* спамится каждый кадр ожидания — не используем */ }
 
 // --- Читы: переменные VM (16-битные) ---
 
@@ -221,6 +272,8 @@ static void bridge_emit_page(void)
 	}
 }
 
+static void bridge_emit_window(int winno, int page) { (void)winno; (void)page; }
+
 #else /* __ANDROID__ */
 
 #include <jni.h>
@@ -231,6 +284,7 @@ static JavaVM *jvm = NULL;
 static jclass bridge_class = NULL;      // GlobalRef на NativeBridge
 static jmethodID mid_on_adv_text = NULL;
 static jmethodID mid_on_adv_page = NULL;
+static jmethodID mid_on_window = NULL;
 
 /* NativeBridge — Kotlin object: external fun-методы НЕ статические,
  * вторым JNI-аргументом приходит экземпляр синглтона (jobject). */
@@ -243,6 +297,9 @@ Java_io_github_rufim_alice_NativeBridge_nativeInit(JNIEnv *env, jobject self)
 	mid_on_adv_text = (*env)->GetStaticMethodID(env, bridge_class, "onAdvText",
 	                                            "(Ljava/lang/String;Z)V");
 	if (!mid_on_adv_text)
+		(*env)->ExceptionClear(env);
+	mid_on_window = (*env)->GetStaticMethodID(env, bridge_class, "onWindow", "(II)V");
+	if (!mid_on_window)
 		(*env)->ExceptionClear(env);
 	mid_on_adv_page = (*env)->GetStaticMethodID(env, bridge_class, "onAdvPage", "()V");
 	if (!mid_on_adv_page)
@@ -270,6 +327,17 @@ Java_io_github_rufim_alice_NativeBridge_nativeOpenEngineMenu(JNIEnv *env, jobjec
 {
 	(void)env; (void)self;
 	bridge_request_menu();
+}
+
+JNIEXPORT void JNICALL
+Java_io_github_rufim_alice_NativeBridge_nativeSetReadWindows(
+		JNIEnv *env, jobject self, jstring jcsv)
+{
+	(void)self;
+	const char *p = jcsv ? (*env)->GetStringUTFChars(env, jcsv, NULL) : NULL;
+	bridge_set_read_windows(p);
+	if (p)
+		(*env)->ReleaseStringUTFChars(env, jcsv, p);
 }
 
 // Список номеров сценарных страниц (через запятую), текст которых НЕ озвучивать
@@ -389,6 +457,8 @@ static JNIEnv *bridge_env(void)
 
 static void bridge_emit(const char *utf8)
 {
+	// лог до гейта: видно, что ушло бы в озвучку, даже при выключенном TTS
+	BLOG("flush win=%d |%s|", cur_winno, utf8);
 	if (!tts_enabled || !mid_on_adv_text)
 		return;
 	JNIEnv *env = bridge_env();
@@ -410,6 +480,18 @@ static void bridge_emit_page(void)
 	if (!env)
 		return;
 	(*env)->CallStaticVoidMethod(env, bridge_class, mid_on_adv_page);
+	if ((*env)->ExceptionCheck(env))
+		(*env)->ExceptionClear(env);
+}
+
+static void bridge_emit_window(int winno, int page)
+{
+	if (!tts_enabled || !mid_on_window)
+		return;
+	JNIEnv *env = bridge_env();
+	if (!env)
+		return;
+	(*env)->CallStaticVoidMethod(env, bridge_class, mid_on_window, (jint)winno, (jint)page);
 	if ((*env)->ExceptionCheck(env))
 		(*env)->ExceptionClear(env);
 }

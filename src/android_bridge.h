@@ -9,6 +9,10 @@
 
 #include <stdbool.h>
 
+// Сообщить UI окно и страницу отображаемого текста (оверлей «стр N · окно M» —
+// помогает подобрать «не читать страницы» для конкретной игры).
+void bridge_report_window(int winno, int page);
+
 // --- ADV-текст (зовётся из texthook.c) ---
 void bridge_adv_message(const char *utf8);
 void bridge_adv_newline(void);
@@ -22,6 +26,11 @@ void bridge_advance_message(void);
 // Запрос/забор открытия меню движка (UI-поток ставит, поток игры исполняет).
 void bridge_request_menu(void);
 int  bridge_take_menu_request(void);
+
+// Белый список окон для озвучки (пусто = все). bridge_window_allowed зовётся
+// из message.c перед отдачей текста в text-hook.
+void bridge_set_read_windows(const char *csv);
+bool bridge_window_allowed(int winno);
 
 // --- Читы: доступ к переменным VM (16-битные значения) ---
 struct bridge_var {

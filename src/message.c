@@ -37,6 +37,8 @@
 #include "ags.h"
 #include "nact.h"
 #include "texthook.h"
+#include "android_bridge.h"
+#include "scenario.h"
 
 /* ショートカット */
 #define msg nact->msg
@@ -121,9 +123,14 @@ void msg_putMessage(const char *m) {
 	// fprintf(stdout, "x=%d, y = %d, msg=%s\n", msgcur.x,msgcur.y,msg);
 	if (!msg.mg_dspMsg) return;
 
-	// Текст реально показывается — только теперь отдаём в text-hook (иначе TTS
-	// читал бы невидимый текст: имена пунктов меню, предметов и т.п.).
-	texthook_message(m);
+	// Показать окно и страницу в отладочном оверлее (все окна, до фильтра).
+	bridge_report_window(msg.winno, sl_getPage());
+
+	// Текст реально показывается — отдаём в text-hook, если окно в белом списке
+	// озвучки (пусто = все). Так читается только окно диалога, без боевого
+	// лога/статуса/меню (иначе TTS читал бы невидимый и посторонний текст).
+	if (bridge_window_allowed(msg.winno))
+		texthook_message(m);
 
 	SDL_Rect drawn;
 	msgcur.x += ags_drawString(msgcur.x, msgcur.y, m, msg.MsgFontColor, msg.MsgFontSize, &drawn);
