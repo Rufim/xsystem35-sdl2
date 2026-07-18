@@ -82,28 +82,81 @@ static void bridge_emit(const char *utf8);
 static void bridge_emit_page(void);
 static void bridge_emit_window(int winno, int page);
 
-/* Текст озвучивается сразу при отображении (msg_putMessage). Отбор «что
- * читать» делает подавление по страницам сценария (texthook_set_suppression_list):
- * поведенчески диалог/бой/меню в System 3.9-играх неразличимы (игра сама
- * опрашивает ввод скриптом), но живут на разных страницах — их номера видны
- * в оверлее «стр N · окно M» при включённом TTS. */
+/* Отбор «что читать» делает подавление по страницам сценария
+ * (texthook_set_suppression_list): поведенчески диалог/бой/меню в System 3.9-
+ * играх неразличимы (игра сама опрашивает ввод скриптом), но живут на разных
+ * страницах — их номера видны в оверлее «стр N · окно M» при включённом TTS.
+ *
+ * Строки бокса НЕ озвучиваются по одной (иначе TTS делает паузу после каждой):
+ * фрагменты копятся в буфере и отдаются одной репликой, когда бокс дорисован —
+ * по паузе появления текста (ADV_FLUSH_MS), смене окна или новой странице. */
 static int cur_winno = -1;
 static int cur_page = -1;
 
-// Смена окна/страницы — обновить отладочный оверлей.
+#define ADV_BUF_MAX 4096
+#define ADV_FLUSH_MS 200
+static char adv_buf[ADV_BUF_MAX];
+static size_t adv_len = 0;
+static Uint32 adv_last_add = 0;
+
+static void adv_flush(void)
+{
+	if (!adv_len)
+		return;
+	bridge_emit(adv_buf);
+	adv_len = 0;
+	adv_buf[0] = '\0';
+}
+
+// Смена окна/страницы: дочитать предыдущий бокс, обновить оверлей.
 void bridge_report_window(int winno, int page)
 {
 	if (winno == cur_winno && page == cur_page)
 		return;
+	adv_flush();
 	cur_winno = winno;
 	cur_page = page;
 	bridge_emit_window(winno, page);
 }
 
-void bridge_adv_message(const char *utf8) { if (utf8 && *utf8) bridge_emit(utf8); }
-void bridge_adv_newline(void) { /* текст уже отдан в bridge_adv_message */ }
-void bridge_adv_page_break(void) { bridge_emit_page(); }
+void bridge_adv_message(const char *utf8)
+{
+	if (!utf8 || !*utf8)
+		return;
+	size_t l = strlen(utf8);
+	if (adv_len + l + 2 >= ADV_BUF_MAX)
+		adv_flush();   // переполнение — озвучить накопленное и продолжить
+	if (l + 2 >= ADV_BUF_MAX)
+		return;
+	memcpy(adv_buf + adv_len, utf8, l);
+	adv_len += l;
+	adv_buf[adv_len] = '\0';
+	adv_last_add = SDL_GetTicks();
+}
+
+void bridge_adv_newline(void)
+{
+	// разделить строки бокса пробелом
+	if (adv_len && adv_buf[adv_len - 1] != ' ' && adv_len + 2 < ADV_BUF_MAX) {
+		adv_buf[adv_len++] = ' ';
+		adv_buf[adv_len] = '\0';
+	}
+}
+
+void bridge_adv_page_break(void)
+{
+	adv_flush();
+	bridge_emit_page();
+}
+
 void bridge_adv_keywait(void) { /* спамится каждый кадр ожидания — не используем */ }
+
+// Зовётся каждый кадр из get_event: бокс дорисован (пауза текста) — озвучить.
+void bridge_adv_tick(void)
+{
+	if (adv_len && SDL_GetTicks() - adv_last_add > ADV_FLUSH_MS)
+		adv_flush();
+}
 
 // --- Читы: переменные VM (16-битные) ---
 

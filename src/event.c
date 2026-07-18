@@ -577,6 +577,8 @@ static void get_event(void) {
 	// в потоке игры (как жест «три пальца»); флаг уже сброшен, рекурсии нет.
 	if (bridge_take_menu_request())
 		menu_open();
+	// Озвучить накопленный бокс, когда текст перестал появляться.
+	bridge_adv_tick();
 #endif
 	scheduler_on_event(scheduler_event);
 	if (game_id == GAME_RANCE4_V2)

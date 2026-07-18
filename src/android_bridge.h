@@ -18,6 +18,8 @@ void bridge_adv_message(const char *utf8);
 void bridge_adv_newline(void);
 void bridge_adv_page_break(void);
 void bridge_adv_keywait(void);
+// Каждый кадр (get_event): озвучить бокс, когда текст перестал появляться.
+void bridge_adv_tick(void);
 
 // --- Управление (зовётся из JNI) ---
 void bridge_set_tts_enabled(bool on);
