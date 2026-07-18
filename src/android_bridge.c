@@ -20,19 +20,23 @@ static bool tts_enabled = false;
 
 void bridge_set_tts_enabled(bool on) { tts_enabled = on; }
 
-// Синтетический Enter в очередь SDL — игра листает диалог тем же путём, что и
-// реальный ввод (thread-safe).
+// Синтетический левый клик мыши в очередь SDL — «дальше» в диалоге.
+// Именно кнопка мыши шлёт защёлкнутое AGSEVENT_BUTTON_PRESS (event.c), которое
+// движок обрабатывает надёжно; SDL_KEYDOWN лишь ставит мгновенное состояние
+// клавиши и при быстрых DOWN+UP теряется на опросе keywait.
 void bridge_advance_message(void)
 {
 	SDL_Event ev;
 	memset(&ev, 0, sizeof(ev));
-	ev.type = SDL_KEYDOWN;
-	ev.key.state = SDL_PRESSED;
-	ev.key.keysym.sym = SDLK_RETURN;
-	ev.key.keysym.scancode = SDL_SCANCODE_RETURN;
+	ev.type = SDL_MOUSEBUTTONDOWN;
+	ev.button.button = SDL_BUTTON_LEFT;
+	ev.button.state = SDL_PRESSED;
+	ev.button.clicks = 1;
+	ev.button.x = 100;
+	ev.button.y = 100;
 	SDL_PushEvent(&ev);
-	ev.type = SDL_KEYUP;
-	ev.key.state = SDL_RELEASED;
+	ev.type = SDL_MOUSEBUTTONUP;
+	ev.button.state = SDL_RELEASED;
 	SDL_PushEvent(&ev);
 }
 
