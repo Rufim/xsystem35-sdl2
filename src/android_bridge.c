@@ -252,6 +252,23 @@ Java_io_github_rufim_alice_NativeBridge_nativeAdvance(JNIEnv *env, jobject self)
 	bridge_advance_message();
 }
 
+// Приглушение музыки на время речи. Для System 3.x пока no-op (TODO: SDL_mixer).
+JNIEXPORT void JNICALL
+Java_io_github_rufim_alice_NativeBridge_nativeDuckMusic(
+		JNIEnv *env, jobject self, jboolean on, jint percent)
+{
+	(void)env; (void)self; (void)on; (void)percent;
+}
+
+// Счётчик посимвольной отрисовки (модалко-детект авто-листания) — не реализован
+// для System 3.x; авто-листание работает без защиты от модалок.
+JNIEXPORT jint JNICALL
+Java_io_github_rufim_alice_NativeBridge_nativeUiDrawCount(JNIEnv *env, jobject self)
+{
+	(void)env; (void)self;
+	return 0;
+}
+
 // Массив строк "page\tvarno\tname\tvalue" из bridge_var[]
 static jobjectArray vars_to_jarray(JNIEnv *env, struct bridge_var *vars, int n)
 {
