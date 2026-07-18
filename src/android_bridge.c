@@ -12,6 +12,7 @@
 #include "variable.h"
 #include "nact.h"
 #include "volume.h"
+#include "texthook.h"
 
 #define BRIDGE_PAGE_MAX 256   // совпадает с PAGE_MAX в variable.c
 
@@ -251,6 +252,19 @@ Java_io_github_rufim_alice_NativeBridge_nativeAdvance(JNIEnv *env, jobject self)
 {
 	(void)env; (void)self;
 	bridge_advance_message();
+}
+
+// Список номеров сценарных страниц (через запятую), текст которых НЕ озвучивать
+// (меню/статус-экраны). Пусто — не подавлять ничего.
+JNIEXPORT void JNICALL
+Java_io_github_rufim_alice_NativeBridge_nativeSetSuppressPages(
+		JNIEnv *env, jobject self, jstring jpages)
+{
+	(void)self;
+	const char *p = jpages ? (*env)->GetStringUTFChars(env, jpages, NULL) : NULL;
+	texthook_set_suppression_list((p && *p) ? p : NULL);
+	if (p)
+		(*env)->ReleaseStringUTFChars(env, jpages, p);
 }
 
 // Приглушение музыки на время речи через систему громкости движка (volume.c).
