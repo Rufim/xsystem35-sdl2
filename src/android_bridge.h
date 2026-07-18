@@ -19,6 +19,10 @@ void bridge_adv_keywait(void);
 void bridge_set_tts_enabled(bool on);
 void bridge_advance_message(void);
 
+// Запрос/забор открытия меню движка (UI-поток ставит, поток игры исполняет).
+void bridge_request_menu(void);
+int  bridge_take_menu_request(void);
+
 // --- Читы: доступ к переменным VM (16-битные значения) ---
 struct bridge_var {
 	int page;          // 0 — глобальные скаляры; >0 — страница массива varPage

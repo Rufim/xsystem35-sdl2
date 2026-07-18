@@ -20,6 +20,12 @@ static bool tts_enabled = false;
 
 void bridge_set_tts_enabled(bool on) { tts_enabled = on; }
 
+// Запрос открыть меню движка (громкость/пропуск/…). Ставится из UI-потока,
+// исполняется в потоке игры (get_event), т.к. menu_open рисует модалку.
+static volatile int menu_request = 0;
+void bridge_request_menu(void) { menu_request = 1; }
+int bridge_take_menu_request(void) { int r = menu_request; menu_request = 0; return r; }
+
 // Синтетический левый клик мыши в очередь SDL — «дальше» в диалоге.
 // Именно кнопка мыши шлёт защёлкнутое AGSEVENT_BUTTON_PRESS (event.c), которое
 // движок обрабатывает надёжно; SDL_KEYDOWN лишь ставит мгновенное состояние
@@ -256,6 +262,14 @@ Java_io_github_rufim_alice_NativeBridge_nativeAdvance(JNIEnv *env, jobject self)
 {
 	(void)env; (void)self;
 	bridge_advance_message();
+}
+
+// Открыть встроенное меню движка (громкость/пропуск/рестарт/выход).
+JNIEXPORT void JNICALL
+Java_io_github_rufim_alice_NativeBridge_nativeOpenEngineMenu(JNIEnv *env, jobject self)
+{
+	(void)env; (void)self;
+	bridge_request_menu();
 }
 
 // Список номеров сценарных страниц (через запятую), текст которых НЕ озвучивать
