@@ -54,6 +54,7 @@ static inline int v_sliceSize(struct VarRef *r) {
 void v_set_encoding(CharacterEncoding encoding);
 void v_set_names(int count, char **names);
 const char *v_name(int var);
+int v_name_count(void);
 vmvar_t *v_ref_indexed(int var, int index, struct VarRef *ref);
 bool v_allocatePage(int page, int size, bool saveflag);
 bool v_bindArray(int datavar, vmvar_t *pointvar, int offset, int page);

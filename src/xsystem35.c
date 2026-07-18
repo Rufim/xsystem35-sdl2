@@ -403,6 +403,11 @@ static void check_profile() {
 	if (param) {
 		texthook_set_suppression_list(param);
 	}
+#ifdef __ANDROID__
+	/* На Android конфиг с texthook отсутствует — включаем Android-режим,
+	 * чтобы ADV-текст уходил в мост (TTS). */
+	texthook_set_mode(TEXTHOOK_ANDROID);
+#endif
 
 	/* Censor list for streamer mode */
 	param = get_profile("censor");

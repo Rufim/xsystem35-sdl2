@@ -77,6 +77,10 @@ const char *v_name(int var) {
 	return buf;
 }
 
+int v_name_count(void) {
+	return varname_cnt;
+}
+
 static char *advance(const char *s, int n) {
 	while (*s && n > 0) {
 		s = advance_char(s, encoding);

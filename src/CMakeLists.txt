@@ -39,6 +39,7 @@ target_include_directories(xsystem35 PRIVATE .)
 target_link_libraries(xsystem35 PRIVATE src_lib)
 
 target_sources(xsystem35 PRIVATE
+  android_bridge.c
   ags.c
   cdrom.bgm.c
   cg.c

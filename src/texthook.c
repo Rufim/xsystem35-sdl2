@@ -23,6 +23,7 @@
 #include "scenario.h"
 #include "texthook.h"
 #include "nact.h"
+#include "android_bridge.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -178,6 +179,12 @@ void texthook_message(const char *m) {
 	case TEXTHOOK_COPY:
 		texthook_copy_message(m);
 		break;
+	case TEXTHOOK_ANDROID: {
+		char *utf = toUTF8(m);
+		bridge_adv_message(utf);
+		free(utf);
+		break;
+	}
 	}
 #endif
 }
@@ -194,6 +201,9 @@ void texthook_newline(void) {
 		break;
 	case TEXTHOOK_COPY:
 		texthook_copy_newline();
+		break;
+	case TEXTHOOK_ANDROID:
+		bridge_adv_newline();
 		break;
 	}
 #endif
@@ -213,6 +223,9 @@ void texthook_nextpage(void) {
 	case TEXTHOOK_COPY:
 		texthook_copy_nextpage();
 		break;
+	case TEXTHOOK_ANDROID:
+		bridge_adv_page_break();
+		break;
 	}
 #endif
 	suppression_state = INIT;
@@ -230,6 +243,9 @@ void texthook_keywait(void) {
 		break;
 	case TEXTHOOK_COPY:
 		texthook_copy_keywait();
+		break;
+	case TEXTHOOK_ANDROID:
+		bridge_adv_keywait();
 		break;
 	}
 #endif

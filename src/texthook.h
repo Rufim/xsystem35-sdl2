@@ -24,6 +24,7 @@ enum texthook_mode {
 	TEXTHOOK_NONE,
 	TEXTHOOK_PRINT,
 	TEXTHOOK_COPY,
+	TEXTHOOK_ANDROID,
 };
 
 void texthook_set_mode(enum texthook_mode mode);
